@@ -45,9 +45,16 @@ build/
 *.lock
 
 # Mobile specific
-mobile/build/
-mobile/apk/*.apk
-mobile/.env
+parser/mobile/build/
+parser/mobile/apk/*.apk
+parser/mobile/.env
+parser/mobile/.flutter-plugins
+parser/mobile/.flutter-plugins-dependencies
+parser/mobile/.packages
+parser/mobile/.pub-cache/
+parser/mobile/.pub/
+parser/mobile/pubspec.lock
+parser/mobile/.firebase/
 
 # IDE
 .vscode/
