@@ -59,7 +59,16 @@ To ensure the "Add to Home Screen" works correctly on Android:
 - The `index.html` manually registers `sw.js`.
 - Manifest icons include both regular and `maskable` purposes.
 
-## 8. Troubleshooting
+## 8. Performance Optimization (Mobile)
+To ensure the app loads fast on mobile devices, use the **WebAssembly (WASM)** build target:
+```powershell
+cd parser/mobile
+flutter build web --release --base-href / --wasm
+```
+- **WASM**: Compiles the app into a binary format for much faster execution on mobile processors.
+- **Loading Screen**: The `web/index.html` includes a branded MK Restaurants loading screen with a pulsing logo and Lao text to improve the perceived load time.
+
+## 9. Troubleshooting
 - **Blank Screen**: Check the browser console (F12) for `.env` loading errors. Ensure `assets/.env` exists and is referenced correctly in `pubspec.yaml`.
 - **Icons not showing**: Verify that the images in `web/icons/` match the paths defined in `web/manifest.json`.
 - **Firebase CLI Crashes**: If `firebase` commands fail on Node.js 25+, run `npm install -g firebase-tools` to update to the latest compatible version.
