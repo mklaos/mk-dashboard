@@ -1,51 +1,63 @@
 {
   "ไอศกรีมชาเขียว": {
     "lao": "ໄອສະກຣີມຊາເຂົ້າ",
-    "en": "Green Tea Ice Cream"
+    "en": "Green Tea Ice Cream",
+    "category": "dessert"
   },
   "ไอศกรีมวานิลลา": {
     "lao": "ໄອສະກຣີມວານິລລາ",
-    "en": "Vanilla Ice Cream"
+    "en": "Vanilla Ice Cream",
+    "category": "dessert"
   },
   "ไอศกรีมสตอเบอรี่": {
     "lao": "ໄອສະກຣີມສະຕໍເບີຣີ",
-    "en": "Strawberry Ice Cream"
+    "en": "Strawberry Ice Cream",
+    "category": "dessert"
   },
   "ไอศกรีมช็อกโกแลต": {
     "lao": "ໄອສະກຣີມຊ໊ອກໂກແລັດ",
-    "en": "Chocolate Ice Cream"
+    "en": "Chocolate Ice Cream",
+    "category": "dessert"
   },
   "เป็ดย่างเอ็มเค-เล็ก": {
     "lao": "ເປັດຍ່າງເອັມເຄ (ນ້ອຍ)",
-    "en": "MK Roast Duck (Small)"
+    "en": "MK Roast Duck (Small)",
+    "category": "food"
   },
   "เป็ดย่างเอ็มเค-กลาง": {
     "lao": "ເປັດຍ່າງເອັມເຄ (ກາງ)",
-    "en": "MK Roast Duck (Medium)"
+    "en": "MK Roast Duck (Medium)",
+    "category": "food"
   },
   "เป็ดย่างเอ็มเค-ใหญ่": {
     "lao": "ເປັດຍ່າງເອັມເຄ (ໃຫຍ່)",
-    "en": "MK Roast Duck (Large)"
+    "en": "MK Roast Duck (Large)",
+    "category": "food"
   },
   "ขนมจีบกุ้ง": {
     "lao": "ເຂົ້າຈີ່ກຸ້ງ",
-    "en": "Shrimp Dumpling"
+    "en": "Shrimp Dumpling",
+    "category": "food"
   },
   "ขนมจีบหมู": {
     "lao": "ເຂົ້າຈີ່ໝູ",
-    "en": "Pork Dumpling"
+    "en": "Pork Dumpling",
+    "category": "food"
   },
   "ซาลาเปาไส้หมูแดง": {
     "lao": "ຊາລາເປົ້າໄສ້ໝູແດງ",
-    "en": "BBQ Pork Bun"
+    "en": "BBQ Pork Bun",
+    "category": "food"
   },
   "ซาลาเปาไส้ครีม": {
     "lao": "ຊາລາເປົ້າໄສ້ຄຣີມ",
-    "en": "Custard Bun"
+    "en": "Custard Bun",
+    "category": "food"
   },
   "เกี๊ยวกุ้ง": {
     "lao": "ເກີ້ຍ້ອກຸ້ງ",
-    "en": "Shrimp Wonton"
+    "en": "Shrimp Wonton",
+    "category": "food"
   },
   "เกี๊ยวน้ำ": {
     "lao": "ເກີ້ຍ້ອນ້ຳ",

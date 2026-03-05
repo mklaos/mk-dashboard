@@ -16,15 +16,15 @@ if exist MKAgent.spec del MKAgent.spec
 set CONFIG_EXISTS=0
 set CREDS_EXISTS=0
 
-if exist config.json (
-    set CONFIG_EXISTS=1
-    copy config.json config.json.bak /Y >nul
-)
+:: if exist config.json (
+::     set CONFIG_EXISTS=1
+::     copy config.json config.json.bak /Y >nul
+:: )
 
-if exist credentials.enc (
-    set CREDS_EXISTS=1
-    copy credentials.enc credentials.enc.bak /Y >nul
-)
+:: if exist credentials.enc (
+::     set CREDS_EXISTS=1
+::     copy credentials.enc credentials.enc.bak /Y >nul
+:: )
 
 echo Running PyInstaller...
 echo.
@@ -68,15 +68,15 @@ if %CREDS_EXISTS%==1 (
 )
 
 :: Cleanup backup files
-if exist config.json.bak del config.json.bak
-if exist credentials.enc.bak del credentials.enc.bak
+:: if exist config.json.bak del config.json.bak
+:: if exist credentials.enc.bak del credentials.enc.bak
 
 :: NOTE: NOT copying config.json to dist (users can maintain their own test configurations)
 :: BUT we DO copy credentials.enc because it's machine-specific encrypted data
-if exist credentials.enc (
-    copy credentials.enc dist\credentials.enc /Y >nul
-    echo [OK] credentials.enc copied to dist folder
-)
+:: if exist credentials.enc (
+::     copy credentials.enc dist\credentials.enc /Y >nul
+::     echo [OK] credentials.enc copied to dist folder
+:: )
 
 :: Copy data folder (product translations) to dist
 if exist ..\data (

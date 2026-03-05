@@ -469,9 +469,14 @@ class MKParserComplete:
                         continue
                     
                     if len(row) >= 10:
+                        receipt_no = str(row.iloc[1]).strip() if len(row) > 1 else ""
+                        # Skip summary rows or category headers that aren't real receipts
+                        if not receipt_no or receipt_no in ["ในร้าน", "รวม", "Total", "nan", "None"] or "รวม" in receipt_no:
+                            continue
+                            
                         # Parse transaction
                         transaction = {
-                            "receipt_no": str(row.iloc[1]) if len(row) > 1 else "",
+                            "receipt_no": receipt_no,
                             "table_no": str(row.iloc[2]) if len(row) > 2 else "",
                             "time_in": self.parse_time(str(row.iloc[4])) if len(row) > 4 else None,
                             "time_out": self.parse_time(str(row.iloc[5])) if len(row) > 5 else None,

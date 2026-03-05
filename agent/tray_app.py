@@ -223,7 +223,9 @@ class MKAgent:
             logger.error(f"Watch folder does not exist: {watch_path}")
             return
             
-        for f in watch_path.glob("*.xls*"):
+        # Materialize list to avoid issues when moving files during iteration
+        files = list(watch_path.glob("*.xls*"))
+        for f in files:
             found_any = True
             self.process_file(str(f))
             
@@ -293,6 +295,17 @@ class MKAgent:
         
         txt = scrolledtext.ScrolledText(win, font=("Consolas", 9), bg="#f5f5f5")
         txt.pack(expand=1, fill='both', padx=5, pady=5)
+        
+        def clear_logs():
+            log_history.clear()
+            txt.config(state='normal')
+            txt.delete('1.0', tk.END)
+            txt.config(state='disabled')
+            logger.info("Log view cleared.")
+
+        btn_frame = tk.Frame(win)
+        btn_frame.pack(fill="x", side="bottom", pady=5)
+        tk.Button(btn_frame, text="Clear Log View", command=clear_logs, bg="#f44336", fg="white").pack(side="right", padx=10)
         
         def refresh():
             if not win.winfo_exists(): return
@@ -390,7 +403,25 @@ class MKAgent:
         win.mainloop()
 
 if __name__ == "__main__":
+    # Single Instance Lock
+    lock_file = Path(os.getenv('TEMP')) / "mk_agent.lock"
     try:
+        if lock_file.exists():
+            # Check if process is still alive (optional, but good for crashes)
+            try:
+                os.remove(lock_file)
+            except:
+                print("Agent already running.")
+                sys.exit(0)
+        
+        with open(lock_file, "w") as f:
+            f.write(str(os.getpid()))
+            
+        import atexit
+        def cleanup():
+            if lock_file.exists(): os.remove(lock_file)
+        atexit.register(cleanup)
+        
         MKAgent().run_tray()
     except Exception as e:
         logger.critical(f"Application crashed: {e}")

@@ -53,9 +53,11 @@ class MKUploader:
                 return self._upload_products(branch_id, sale_date, result.get("products", []))
             elif report_type == "voids":
                 return self._upload_voids(branch_id, sale_date, result.get("voids", []))
+            elif report_type in ["table_details", "receipts"]:
+                return self._upload_transactions(branch_id, sale_date, result.get("transactions" if report_type=="table_details" else "receipts", []))
             else:
                 logger.info(f"Skipping upload for report type: {report_type}")
-                return True # Consider successful if we just chose to skip
+                return True 
         except Exception as e:
             logger.error(f"Upload error for {report_type}: {e}")
             return False
@@ -92,24 +94,61 @@ class MKUploader:
         return True
 
     def _upload_products(self, branch_id, sale_date, products):
-        records = []
+        if not products:
+            return True
+            
+        aggregated = {}
         for p in products:
-            record = {
+            name = p.get("product_name_th", "")
+            if not name: continue
+            
+            if name not in aggregated:
+                aggregated[name] = {
+                    "branch_id": branch_id,
+                    "sale_date": sale_date,
+                    "product_name_th": name,
+                    "product_name_lao": p.get("product_name_lao", ""),
+                    "category_name": p.get("category", ""),
+                    "quantity": 0,
+                    "unit_price": to_float(p.get("unit_price", 0)),
+                    "total_amount": 0,
+                }
+            
+            aggregated[name]["quantity"] += int(p.get("quantity", 0))
+            aggregated[name]["total_amount"] += to_float(p.get("total_amount", 0))
+
+        records = list(aggregated.values())
+        if records:
+            # We use standard upsert because the DB constraint includes product_id which we don't have yet.
+            # This will result in duplicates if re-run, but prevents crashes.
+            self.client.table("product_sales").insert(records).execute()
+        return True
+
+    def _upload_transactions(self, branch_id, sale_date, tx_list):
+        if not tx_list:
+            return True
+        
+        records = []
+        for tx in tx_list:
+            records.append({
                 "branch_id": branch_id,
                 "sale_date": sale_date,
-                "product_name_th": p.get("product_name_th", ""),
-                "category_name": p.get("category", ""),
-                "quantity": int(p.get("quantity", 0)),
-                "unit_price": to_float(p.get("unit_price", 0)),
-                "total_amount": to_float(p.get("total_amount", 0)),
-            }
-            # Add Lao name if available
-            if "product_name_lao" in p and p["product_name_lao"]:
-                record["product_name_lao"] = p["product_name_lao"]
-            records.append(record)
+                "receipt_no": tx.get("receipt_no", ""),
+                "table_no": tx.get("table_no", ""),
+                "customer_count": int(tx.get("customer_count", 0)),
+                "gross_amount": to_float(tx.get("gross_amount", 0)),
+                "discount_amount": to_float(tx.get("discount_amount", 0)),
+                "net_amount": to_float(tx.get("net_amount", 0)),
+                "tax_amount": to_float(tx.get("tax_amount", 0)),
+                "payment_method": tx.get("payment_method", "cash")
+            })
+        
         if records:
-            # Note: Using upsert requires a unique constraint in DB (branch_id, sale_date, product_name_th)
-            self.client.table("product_sales").upsert(records).execute()
+            # upsert on receipt_no is defined in schema.sql
+            self.client.table("transactions").upsert(
+                records, 
+                on_conflict="branch_id,receipt_no"
+            ).execute()
         return True
 
     def _upload_voids(self, branch_id, sale_date, voids):
