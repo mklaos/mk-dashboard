@@ -6,6 +6,7 @@ import '../widgets/kpi_card.dart';
 import '../widgets/hourly_chart.dart';
 import '../widgets/sales_chart.dart';
 import '../widgets/branch_selector.dart';
+import '../widgets/brand_selector.dart';
 import '../widgets/comparison_toggle.dart';
 import '../widgets/kpi_comparison_card.dart';
 import '../widgets/sales_mix_pie_chart.dart';
@@ -26,7 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         context,
         listen: false,
       );
-      provider.loadBranches();
+      provider.loadInitialData();
       _loadInitialData(provider);
     });
   }
@@ -49,98 +50,134 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('MK Sales Dashboard'),
-        centerTitle: true,
-        actions: [
-          Consumer<DashboardProvider>(
-            builder: (context, provider, child) {
-              return IconButton(
+    return Consumer<DashboardProvider>(
+      builder: (context, provider, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(provider.translate('dashboard')),
+            centerTitle: true,
+            actions: [
+              TextButton(
+                onPressed: provider.toggleLocale,
+                child: Text(
+                  provider.isLao ? 'EN' : 'ລາວ',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'logout') provider.logout();
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.logout, color: Colors.black54),
+                        const SizedBox(width: 8),
+                        Text(provider.translate('logout')),
+                      ],
+                    ),
+                  ),
+                ],
+                icon: const Icon(Icons.more_vert),
+              ),
+              IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: provider.isLoading ? null : provider.refresh,
-              );
-            },
-          ),
-        ],
-      ),
-      body: Consumer<DashboardProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading && provider.dailySalesData == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.error != null) {
-            return _buildErrorView(provider);
-          }
-
-          return RefreshIndicator(
-            onRefresh: provider.refresh,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  BranchSelector(
-                    branchCodes: ['ALL', ...provider.branches.map((b) => b.code)],
-                    selectedBranch: provider.selectedBranchCode,
-                    onBranchSelected: provider.switchBranch,
-                  ),
-                  const SizedBox(height: 4),
-                  _buildDateNavigation(context, provider),
-                  const SizedBox(height: 12),
-                  _buildSubheader(context, provider),
-                  const SizedBox(height: 8),
-                  if (provider.selectedBranchCode == 'ALL')
-                    ComparisonToggle(
-                      showComparison: provider.showComparison,
-                      onToggle: provider.toggleComparisonMode,
-                    ),
-                  if (provider.dailySalesData == null &&
-                      provider.hourlyData.isEmpty &&
-                      provider.productData.isEmpty) ...[
-                    _buildNoDataView(context, provider),
-                  ] else if (provider.selectedBranchCode == 'ALL'
-                      ? !provider.showComparison
-                      : true) ...[
-                    _buildKPICards(context, provider),
-                    const SizedBox(height: 12),
-                    _buildHourlyChart(context, provider),
-                    const SizedBox(height: 12),
-                    _buildSalesMixChart(context, provider),
-                    const SizedBox(height: 12),
-                    _buildTopProducts(context, provider),
-                  ] else ...[
-                    KPIComparisonCard(
-                      branchData: provider.branches.map((branch) {
-                        // Find the data for this specific branch in the comparison data
-                        final branchStats = provider.comparisonData.firstWhere(
-                          (data) => data['branch_code'] == branch.code,
-                          orElse: () => null,
-                        );
-
-                        return {
-                          'branch_code': branch.code,
-                          'net_sales': branchStats?['net_sales'] ?? 0,
-                          'receipt_count': branchStats?['receipt_count'] ?? 0,
-                          'customer_count': branchStats?['customer_count'] ?? 0,
-                          'void_amount': branchStats?['void_amount'] ?? 0,
-                        };
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    SalesChart(
-                      data: provider.comparisonData,
-                      chartType: 'comparison',
-                    ),
-                  ],
-                ],
               ),
+            ],
+          ),
+          body: _buildBody(provider),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(DashboardProvider provider) {
+    if (provider.isLoading && provider.dailySalesData == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (provider.error != null) {
+      return _buildErrorView(provider);
+    }
+
+    return RefreshIndicator(
+      onRefresh: provider.refresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            BrandSelector(
+              brands: provider.brands,
+              selectedBrandId: provider.selectedBrandId,
+              onBrandSelected: provider.switchBrand,
             ),
-          );
-        },
+            BranchSelector(
+              branchCodes: ['ALL', ...provider.filteredBranches.map((b) => b.code)],
+              selectedBranch: provider.selectedBranchCode,
+              onBranchSelected: provider.switchBranch,
+            ),
+            const SizedBox(height: 4),
+            _buildDateNavigation(context, provider),
+            const SizedBox(height: 12),
+            _buildSubheader(context, provider),
+            const SizedBox(height: 8),
+            if (provider.selectedBranchCode == 'ALL')
+              ComparisonToggle(
+                showComparison: provider.showComparison,
+                onToggle: provider.toggleComparisonMode,
+              ),
+            if (provider.dailySalesData == null &&
+                provider.hourlyData.isEmpty &&
+                provider.productData.isEmpty) ...[
+              _buildNoDataView(context, provider),
+            ] else if (provider.selectedBranchCode == 'ALL'
+                ? !provider.showComparison
+                : true) ...[
+              _buildKPICards(context, provider),
+              const SizedBox(height: 12),
+              _buildHourlyChart(context, provider),
+              const SizedBox(height: 12),
+              _buildSalesMixChart(context, provider),
+              const SizedBox(height: 12),
+              _buildTopProducts(context, provider),
+            ] else ...[
+              _buildComparisonView(provider),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildComparisonView(DashboardProvider provider) {
+    return Column(
+      children: [
+        KPIComparisonCard(
+          branchData: provider.filteredBranches.map((branch) {
+            final branchStats = provider.comparisonData.firstWhere(
+              (data) => data['branch_code'] == branch.code,
+              orElse: () => null,
+            );
+            return {
+              'branch_code': branch.code,
+              'net_sales': branchStats?['net_sales'] ?? 0,
+              'receipt_count': branchStats?['receipt_count'] ?? 0,
+              'customer_count': branchStats?['customer_count'] ?? 0,
+              'void_amount': branchStats?['void_amount'] ?? 0,
+            };
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        SalesChart(
+          data: provider.comparisonData,
+          chartType: 'comparison',
+        ),
+      ],
     );
   }
 
@@ -153,10 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 16),
-            Text(
-              provider.error ?? 'Unknown error',
-              textAlign: TextAlign.center,
-            ),
+            Text(provider.error ?? 'Unknown error', textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
@@ -181,12 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.chevron_left, size: 20),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 44,
-                minHeight: 44,
-              ),
-              onPressed: () {},
+              onPressed: () {}, // TODO: Implement prev day
             ),
             Expanded(
               child: InkWell(
@@ -197,18 +226,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     builder: (context) => SimpleDialog(
                       title: const Text('Select Date'),
                       children: dates
-                          .map(
-                            (date) => SimpleDialogOption(
-                              onPressed: () => Navigator.pop(context, date),
-                              child: Text(_formatDisplayDate(date)),
-                            ),
-                          )
+                          .map((date) => SimpleDialogOption(
+                                onPressed: () => Navigator.pop(context, date),
+                                child: Text(_formatDisplayDate(date)),
+                              ))
                           .toList(),
                     ),
                   );
-                  if (selected != null) {
-                    await provider.loadData(selected);
-                  }
+                  if (selected != null) await provider.loadData(selected);
                 },
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -216,13 +241,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Icon(Icons.calendar_today, size: 16),
                     const SizedBox(width: 6),
                     Text(
-                      provider.selectedDate.isNotEmpty
-                          ? _formatDisplayDate(provider.selectedDate)
-                          : 'No Data',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                      provider.selectedDate.isNotEmpty ? _formatDisplayDate(provider.selectedDate) : 'No Data',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     const Icon(Icons.arrow_drop_down, size: 18),
                   ],
@@ -231,12 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.chevron_right, size: 20),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 44,
-                minHeight: 44,
-              ),
-              onPressed: () {},
+              onPressed: () {}, // TODO: Implement next day
             ),
           ],
         ),
@@ -247,55 +262,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSubheader(BuildContext context, DashboardProvider provider) {
     final branch = provider.selectedBranch;
     final date = provider.selectedDate;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Text(
-        branch != null
-            ? '${branch.displayWithCode} - ${_formatDisplayDate(date)}'
-            : 'All Branches - ${_formatDisplayDate(date)}',
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Colors.grey[600],
-            ),
+        branch != null ? '${branch.displayWithCode} - ${_formatDisplayDate(date)}' : '${provider.currentSelectionDisplay} - ${_formatDisplayDate(date)}',
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey[600]),
       ),
     );
   }
 
   Widget _buildNoDataView(BuildContext context, DashboardProvider provider) {
-    final branch = provider.selectedBranch;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
-          Text(
-            'No Data Available',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            branch != null
-                ? 'No sales data found for ${branch.displayWithCode} on ${_formatDisplayDate(provider.selectedDate)}'
-                : 'No sales data found for All Branches on ${_formatDisplayDate(provider.selectedDate)}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[600],
-            ),
-          ),
+          Text('No Data Available', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          TextButton.icon(
-            onPressed: provider.refresh,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh'),
-          ),
+          TextButton.icon(onPressed: provider.refresh, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
         ],
       ),
     );
@@ -304,50 +289,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildKPICards(BuildContext context, DashboardProvider provider) {
     final data = provider.dailySalesData;
     final avgTicket = _calculateAvgTicket(data);
-    
-    // Get growth percentages
-    final salesGrowth = provider.getGrowthFor('net_sales');
     final receiptsGrowth = provider.getGrowthFor('receipt_count');
     final customersGrowth = provider.getGrowthFor('customer_count');
-    // For avg ticket, we need to calculate from the growth of sales and receipts
-    final avgTicketGrowth = provider.getGrowthFor('net_sales'); // Approximation
+    final avgTicketGrowth = provider.getGrowthFor('net_sales');
+
+    final netSalesExTax = data?['net_sales_ex_tax'] ?? 0;
+    final voidAmount = (data?['void_amount'] is num ? data?['void_amount'] : 0).toDouble();
+    final netSales = (data?['net_sales'] is num ? data?['net_sales'] : 1).toDouble();
+    final voidPercentage = (voidAmount / (netSales > 0 ? netSales : 1)) * 100;
+
+    Color voidColor = Colors.green;
+    if (voidPercentage > 3) voidColor = Colors.red;
+    else if (voidPercentage >= 1) voidColor = Colors.orange;
 
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      crossAxisCount: 4,
+      crossAxisCount: 3,
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
-      childAspectRatio: 2.0,
+      childAspectRatio: 1.8,
       children: [
         KpiCard(
-          title: 'Total Sales',
-          value: _formatCurrency(data?['net_sales'] ?? 0),
+          title: provider.translate('sales_ex_tax'),
+          value: _formatCurrency(netSalesExTax),
           icon: Icons.attach_money,
-          color: Colors.green,
-          growthPercentage: salesGrowth,
+          color: Colors.indigo,
+          growthPercentage: provider.getGrowthFor('net_sales_ex_tax'),
         ),
         KpiCard(
-          title: 'Receipts',
+          title: provider.translate('receipts'),
           value: '${data?['receipt_count'] ?? 0}',
           icon: Icons.receipt_long,
           color: Colors.blue,
           growthPercentage: receiptsGrowth,
         ),
         KpiCard(
-          title: 'Customers',
+          title: provider.translate('customers'),
           value: '${data?['customer_count'] ?? 0}',
           icon: Icons.people,
           color: Colors.orange,
           growthPercentage: customersGrowth,
         ),
         KpiCard(
-          title: 'Avg Ticket',
+          title: provider.translate('avg_ticket'),
           value: _formatCurrency(avgTicket),
           icon: Icons.trending_up,
           color: Colors.purple,
           growthPercentage: avgTicketGrowth,
+        ),
+        KpiCard(
+          title: provider.translate('discounts'),
+          value: _formatCurrency(data?['discount_amount'] ?? 0),
+          icon: Icons.local_offer,
+          color: Colors.teal,
+          growthPercentage: provider.getGrowthFor('discount_amount'),
+        ),
+        KpiCard(
+          title: '${provider.translate('voids')} (${voidPercentage.toStringAsFixed(1)}%)',
+          value: _formatCurrency(voidAmount),
+          icon: Icons.cancel,
+          color: voidColor,
+          growthPercentage: provider.getGrowthFor('void_amount'),
         ),
       ],
     );
@@ -359,17 +363,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Sales by Hour',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 150,
-            child: provider.hourlyData.isNotEmpty
-                ? HourlyChart(hourlyData: provider.hourlyData)
-                : const Center(child: Text('No hourly data')),
-          ),
+          Text(provider.isLao ? 'ຍອດຂາຍຕາມຊົ່ວໂມງ' : 'Sales by Hour', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SizedBox(height: 150, child: provider.hourlyData.isNotEmpty ? HourlyChart(hourlyData: provider.hourlyData) : const Center(child: Text('No data'))),
         ],
       ),
     );
@@ -378,19 +374,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSalesMixChart(BuildContext context, DashboardProvider provider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'Sales Mix (Food vs Beverage)',
-            style: Theme.of(context).textTheme.titleMedium,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(provider.translate('food_vs_bev'), style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                SizedBox(height: 180, child: provider.salesMixData.isNotEmpty ? SalesMixPieChart(salesMixData: provider.salesMixData) : const Center(child: Text('No data'))),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 220,
-            child: provider.salesMixData.isNotEmpty
-                ? SalesMixPieChart(salesMixData: provider.salesMixData)
-                : const Center(child: Text('No sales mix data')),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(provider.translate('dine_in_vs_takeaway'), style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                SizedBox(height: 180, child: provider.dineInVsTakeawayData.isNotEmpty ? SalesMixPieChart(salesMixData: provider.dineInVsTakeawayData) : const Center(child: Text('No data'))),
+              ],
+            ),
           ),
         ],
       ),
@@ -403,41 +408,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Top Products',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 4),
+          Text(provider.translate('top_products'), style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
           ...provider.productData.take(5).map((product) {
-            final name = (product['product_name_lao'] ?? '').isNotEmpty
-                ? product['product_name_lao']
-                : (product['product_name_en'] ??
-                    product['product_name_th'] ??
-                    'Unknown');
+            final name = provider.isLao && product['product_name_lao'] != null ? product['product_name_lao'] : (product['product_name_en'] ?? product['product_name_th']);
             return Card(
               margin: const EdgeInsets.only(bottom: 4),
               child: ListTile(
                 dense: true,
-                leading: CircleAvatar(
-                  radius: 14,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
-                  child: Text(
-                    '${provider.productData.indexOf(product) + 1}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-                title: Text(
-                  name,
-                  style: const TextStyle(fontSize: 14),
-                ),
-                trailing: Text(
-                  _formatCurrency(product['total_amount'] ?? 0),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
+                title: Text(name, style: const TextStyle(fontSize: 14)),
+                trailing: Text(_formatCurrency(product['total_amount'] ?? 0), style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             );
           }),
@@ -448,29 +428,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatCurrency(dynamic amount) {
     final value = (amount is num ? amount : 0).toDouble();
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M ₭';
-    } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(0)}K ₭';
-    }
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M ₭';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(0)}K ₭';
     return '$value ₭';
   }
 
   double _calculateAvgTicket(Map<String, dynamic>? data) {
     final receipts = data?['receipt_count'] ?? 0;
     final sales = data?['net_sales'] ?? 0;
-    if (receipts > 0) {
-      return (sales / receipts).toDouble();
-    }
-    return 0;
+    return receipts > 0 ? (sales / receipts).toDouble() : 0;
   }
 
   String _formatDisplayDate(String dateStr) {
     try {
       final date = DateTime.parse(dateStr);
       return DateFormat('MMMM d, yyyy').format(date);
-    } catch (e) {
-      return dateStr;
-    }
+    } catch (e) { return dateStr; }
   }
 }

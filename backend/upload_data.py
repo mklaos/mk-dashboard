@@ -56,6 +56,8 @@ def upload_daily_sales(supabase: Client, branch_id: str, data: dict):
                 "gross_sales": to_float(daily_data.get("gross_sales", 0)),
                 "net_sales": to_float(daily_data.get("net_sales", 0)),
                 "tax_amount": to_float(daily_data.get("tax_amount", 0)),
+                "discount_amount": to_float(daily_data.get("discount_amount", 0)),
+                "takeaway_sales": to_float(daily_data.get("takeaway_sales", 0)),
                 "receipt_count": int(daily_data.get("receipt_count", 0)),
                 "customer_count": int(daily_data.get("customer_count", 0)),
                 "table_count": int(daily_data.get("table_count", 0)),

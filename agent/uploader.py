@@ -26,12 +26,26 @@ class MKUploader:
             except Exception as e:
                 logger.error(f"Failed to initialize Supabase client: {e}")
 
-    def get_branch_id(self, branch_code: str) -> str:
+    def get_branch_id(self, branch_code: str, brand_name: str = None) -> str:
         if not self.client: return None
         try:
-            response = self.client.table("branches").select("id").eq("code", branch_code).execute()
+            query = self.client.table("branches").select("id, brand_id").eq("code", branch_code)
+            response = query.execute()
+            
             if response.data:
-                return response.data[0]["id"]
+                branch_data = response.data[0]
+                branch_uuid = branch_data["id"]
+                
+                # If brand_name is provided, verify it matches
+                if brand_name:
+                    brand_res = self.client.table("brands").select("id").eq("name", brand_name).maybe_single().execute()
+                    if brand_res.data:
+                        expected_brand_id = brand_res.data["id"]
+                        if branch_data.get("brand_id") != expected_brand_id:
+                            logger.error(f"Branch {branch_code} does not belong to brand {brand_name}")
+                            return None
+                
+                return branch_uuid
             return None
         except Exception as e:
             logger.error(f"Error getting branch ID: {e}")
@@ -69,6 +83,8 @@ class MKUploader:
             "gross_sales": to_float(data.get("gross_sales", 0)),
             "net_sales": to_float(data.get("net_sales", 0)),
             "tax_amount": to_float(data.get("tax_amount", 0)),
+            "discount_amount": to_float(data.get("discount_amount", 0)),
+            "takeaway_sales": to_float(data.get("takeaway_sales", 0)),
             "receipt_count": int(data.get("receipt_count", 0)),
             "customer_count": int(data.get("customer_count", 0)),
             "table_count": int(data.get("table_count", 0)),

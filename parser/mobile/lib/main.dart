@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/dashboard_provider.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/trends_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,7 +96,86 @@ class MKDashboardApp extends StatelessWidget {
           useMaterial3: true,
         ),
         themeMode: ThemeMode.system,
-        home: const DashboardScreen(),
+        home: const AuthWrapper(),
+      ),
+    );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<DashboardProvider>(context, listen: false).checkSession();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<DashboardProvider>(context);
+
+    if (provider.isLoading && !provider.isLoggedIn) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!provider.isLoggedIn) {
+      return const LoginScreen();
+    }
+
+    return const MainNavigationScreen();
+  }
+}
+
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
+
+  @override
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+}
+
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _currentIndex = 0;
+  final List<Widget> _screens = [
+    const DashboardScreen(),
+    const TrendsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: Consumer<DashboardProvider>(
+        builder: (context, provider, child) {
+          return BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            items: [
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.dashboard),
+                label: provider.translate('dashboard'),
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.trending_up),
+                label: provider.translate('trends'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

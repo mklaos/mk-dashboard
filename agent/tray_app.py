@@ -73,6 +73,7 @@ class Config:
             self.base_dir = Path(__file__).parent
         self.path = self.base_dir / "config.json"
         self.data = {
+            "brand_name": "MK Restaurants",
             "branch_code": "MK001",
             "watch_folder": str(self.base_dir / "source"),
             "sync_times": ["12:00", "15:00", "18:00", "23:30"],
@@ -156,10 +157,13 @@ class MKAgent:
 
         try:
             if not self.branch_uuid:
-                logger.info(f"Connecting to fetch Branch UUID for {self.config.data['branch_code']}...")
-                self.branch_uuid = self.uploader.get_branch_id(self.config.data['branch_code'])
+                logger.info(f"Connecting to fetch Branch UUID for {self.config.data['branch_code']} (Brand: {self.config.data.get('brand_name', 'MK Restaurants')})...")
+                self.branch_uuid = self.uploader.get_branch_id(
+                    self.config.data['branch_code'], 
+                    self.config.data.get('brand_name')
+                )
                 if not self.branch_uuid:
-                    logger.error("Branch ID not found. Fix config and restart.")
+                    logger.error("Branch ID not found or brand mismatch. Fix config and restart.")
                     return
             
             logger.info(f"Syncing: {file_name}")
@@ -347,25 +351,29 @@ class MKAgent:
         config_path_label = tk.Label(win, text=f"File: {self.config.path}", font=("Arial", 8), fg="gray")
         config_path_label.grid(row=0, column=0, columnspan=3, padx=20, pady=5, sticky="w")
 
-        tk.Label(win, text="Branch Code (MKXXX):").grid(row=1, column=0, padx=20, pady=15, sticky="e")
-        bc_var = tk.StringVar(value=branch_code)
-        tk.Entry(win, textvariable=bc_var, width=20).grid(row=1, column=1, sticky="w")
+        tk.Label(win, text="Brand Name:").grid(row=1, column=0, padx=20, pady=10, sticky="e")
+        brand_var = tk.StringVar(value=self.config.data.get('brand_name', 'MK Restaurants'))
+        tk.Entry(win, textvariable=brand_var, width=20).grid(row=1, column=1, sticky="w")
 
-        tk.Label(win, text="Watch Folder Path:").grid(row=2, column=0, padx=20, pady=10, sticky="e")
+        tk.Label(win, text="Branch Code (MKXXX):").grid(row=2, column=0, padx=20, pady=15, sticky="e")
+        bc_var = tk.StringVar(value=branch_code)
+        tk.Entry(win, textvariable=bc_var, width=20).grid(row=2, column=1, sticky="w")
+
+        tk.Label(win, text="Watch Folder Path:").grid(row=3, column=0, padx=20, pady=10, sticky="e")
         path_var = tk.StringVar(value=watch_folder)
-        tk.Entry(win, textvariable=path_var, width=30).grid(row=2, column=1, sticky="w")
+        tk.Entry(win, textvariable=path_var, width=30).grid(row=3, column=1, sticky="w")
 
         def browse():
             folder = filedialog.askdirectory(initialdir=path_var.get())
             if folder: path_var.set(folder)
-        tk.Button(win, text="Browse", command=browse).grid(row=2, column=2, padx=5)
+        tk.Button(win, text="Browse", command=browse).grid(row=3, column=2, padx=5)
 
-        tk.Label(win, text="Sync Times (HH:MM, ...):").grid(row=3, column=0, padx=20, pady=10, sticky="e")
+        tk.Label(win, text="Sync Times (HH:MM, ...):").grid(row=4, column=0, padx=20, pady=10, sticky="e")
         times_str = tk.StringVar(value=", ".join(sync_times))
-        tk.Entry(win, textvariable=times_str, width=30).grid(row=3, column=1, sticky="w")
+        tk.Entry(win, textvariable=times_str, width=30).grid(row=4, column=1, sticky="w")
 
         btn_frame = tk.Frame(win)
-        btn_frame.grid(row=4, column=1, pady=30, sticky="w")
+        btn_frame.grid(row=5, column=1, pady=30, sticky="w")
 
         def save():
             try:
@@ -373,6 +381,7 @@ class MKAgent:
                 valid_times = [t.strip() for t in raw_times if ":" in t]
 
                 new_config = {
+                    "brand_name": brand_var.get().strip(),
                     "branch_code": bc_var.get().strip(),
                     "watch_folder": path_var.get().strip(),
                     "sync_times": valid_times,

@@ -332,102 +332,78 @@ class MKParserComplete:
     # ============================================================================
     
     def parse_daily_sales(self, df: pd.DataFrame, sale_date: date) -> Dict:
-        """Parse daily sales summary - complex format"""
-        daily_data = {}
+        """Parse daily sales summary using keyword anchoring for resilience"""
+        daily_data = {
+            "sale_date": sale_date,
+            "gross_sales": Decimal("0"),
+            "net_sales": Decimal("0"),
+            "tax_amount": Decimal("0"),
+            "discount_amount": Decimal("0"),
+            "receipt_count": 0,
+            "customer_count": 0,
+            "void_count": 0,
+            "void_amount": Decimal("0"),
+            "takeaway_sales": Decimal("0"),
+        }
 
         try:
-            # Look for specific rows with metrics
-            # Use multiple strategies: Thai text OR position-based
+            # We look for the "รวม" (Total) column, usually the last column with values
+            total_col_idx = -1
+            for col in range(len(df.columns) - 1, -1, -1):
+                if 'รวม' in str(df.columns[col]) or 'Total' in str(df.columns[col]):
+                    total_col_idx = col
+                    break
+            
+            # If "รวม" column header not found, fallback to the last numeric column
+            if total_col_idx == -1:
+                 total_col_idx = len(df.columns) - 1
+
             for idx, row in df.iterrows():
                 try:
-                    row_str = ' '.join([str(x) for x in row.values if pd.notna(x)])
+                    # Convert whole row to a search string
+                    row_list = [str(x) for x in row.values if pd.notna(x)]
+                    row_str = ' '.join(row_list)
                     
-                    # Strategy 1: Thai text matching
+                    # Extract values based on keywords
                     if 'ยกเลิกสินค้า' in row_str and 'โต๊ะ' in row_str:
-                        # Void count - look for pattern like "7:9" in any column
-                        for col in range(len(row)):
-                            cell_val = str(row.iloc[col]) if pd.notna(row.iloc[col]) else ''
-                            if ':' in cell_val:
-                                parts = cell_val.split(':')
-                                if parts[0].isdigit():
-                                    daily_data['void_count'] = int(parts[0])
-                                    break
+                        # Void count (format: "7:9")
+                        match = re.search(r'(\d+):(\d+)', row_str)
+                        if match:
+                            daily_data['void_count'] = int(match.group(1))
 
-                    if 'ยกเลิกสินค้า' in row_str and 'บาท' in row_str:
-                        # Void amount - find the numeric value
-                        for col in range(len(row)):
-                            if pd.notna(row.iloc[col]):
-                                val = row.iloc[col]
-                                if isinstance(val, (int, float)) and val > 0:
-                                    daily_data['void_amount'] = self.clean_amount(val)
-                                    break
-                                elif isinstance(val, str):
-                                    cleaned = val.replace(',', '').strip()
-                                    try:
-                                        amount = float(cleaned)
-                                        if amount > 0:
-                                            daily_data['void_amount'] = Decimal(cleaned)
-                                            break
-                                    except:
-                                        pass
+                    elif 'ยกเลิกสินค้า' in row_str and 'บาท' in row_str:
+                        daily_data['void_amount'] = self.clean_amount(row.iloc[total_col_idx])
 
-                    if 'จำนวนใบเสร็จที่ขาย' in row_str:
-                        # Receipt count - find numeric value in row
-                        for col in range(len(row)):
-                            if pd.notna(row.iloc[col]):
-                                val = row.iloc[col]
-                                if isinstance(val, (int, float)) and val > 0:
-                                    daily_data['receipt_count'] = self.clean_int(val)
-                                    break
-                                elif isinstance(val, str):
-                                    cleaned = val.replace(',', '').strip()
-                                    if cleaned.isdigit():
-                                        daily_data['receipt_count'] = int(cleaned)
-                                        break
+                    elif 'จำนวนใบเสร็จที่ขาย' in row_str:
+                        daily_data['receipt_count'] = self.clean_int(row.iloc[total_col_idx])
 
-                    if 'จำนวนลูกค้า' in row_str:
-                        # Customer count
-                        for col in range(len(row)):
-                            if pd.notna(row.iloc[col]):
-                                val = row.iloc[col]
-                                if isinstance(val, (int, float)) and val > 0:
-                                    daily_data['customer_count'] = self.clean_int(val)
-                                    break
-                                elif isinstance(val, str):
-                                    cleaned = val.replace(',', '').strip()
-                                    if cleaned.isdigit():
-                                        daily_data['customer_count'] = int(cleaned)
-                                        break
+                    elif 'จำนวนลูกค้า' in row_str:
+                        daily_data['customer_count'] = self.clean_int(row.iloc[total_col_idx])
 
-                    if 'ยอดสินค้าก่อนภาษี' in row_str:
-                        # Gross sales
-                        for col in range(len(row)):
-                            if pd.notna(row.iloc[col]):
-                                val = row.iloc[col]
-                                if isinstance(val, (int, float)) and val > 0:
-                                    daily_data['gross_sales'] = self.clean_amount(val)
-                                    break
-                                elif isinstance(val, str):
-                                    cleaned = val.replace(',', '').strip()
-                                    try:
-                                        amount = float(cleaned)
-                                        if amount > 0:
-                                            daily_data['gross_sales'] = Decimal(cleaned)
-                                            break
-                                    except:
-                                        pass
+                    elif 'ยอดสินค้าก่อนภาษี' in row_str:
+                        daily_data['gross_sales'] = self.clean_amount(row.iloc[total_col_idx])
 
-                    if row_str.startswith('ภาษี'):
-                        # Tax amount
-                        for col in range(len(row)):
-                            if pd.notna(row.iloc[col]):
-                                val = row.iloc[col]
-                                if isinstance(val, (int, float)) and val > 0:
-                                    daily_data['tax_amount'] = self.clean_amount(val)
-                                    break
-                                elif isinstance(val, str):
-                                    cleaned = val.replace(',', '').strip()
-                                    try:
+                    elif row_str.strip().startswith('ภาษี') or 'ภาษี' in row_list:
+                        daily_data['tax_amount'] = self.clean_amount(row.iloc[total_col_idx])
+
+                    elif 'รายรับทั้งสิ้น' in row_str or 'Grand Total' in row_str:
+                        daily_data['net_sales'] = self.clean_amount(row.iloc[total_col_idx])
+
+                    elif 'ส่วนลด' in row_str:
+                        # Sum up all types of discounts
+                        daily_data['discount_amount'] += self.clean_amount(row.iloc[total_col_idx])
+                    
+                    elif 'ซื้อกลับบ้าน' in row_str or 'Take Away' in row_str:
+                        daily_data['takeaway_sales'] = self.clean_amount(row.iloc[total_col_idx])
+
+                except Exception as e:
+                    logger.debug(f"Row {idx} parse error: {e}")
+                    continue
+
+            return {"success": True, "daily_data": daily_data}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
                                         amount = float(cleaned)
                                         if amount > 0:
                                             daily_data['tax_amount'] = Decimal(cleaned)

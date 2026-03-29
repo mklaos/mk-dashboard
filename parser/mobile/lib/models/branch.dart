@@ -5,10 +5,12 @@ class Branch {
   final String? nameEn;
   final String? nameLao;
   final String? location;
+  final String? brandId;
   final bool isActive;
 
   const Branch({
     required this.id,
+    this.brandId,
     required this.code,
     required this.name,
     this.nameEn,
@@ -20,6 +22,7 @@ class Branch {
   factory Branch.fromJson(Map<String, dynamic> json) {
     return Branch(
       id: json['id'] as String,
+      brandId: json['brand_id'] as String?,
       code: json['code'] as String,
       name: json['name'] as String,
       nameEn: json['name_en'] as String?,
@@ -32,6 +35,7 @@ class Branch {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'brand_id': brandId,
       'code': code,
       'name': name,
       'name_en': nameEn,
