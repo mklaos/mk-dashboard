@@ -9,5 +9,7 @@
     "23:30"
   ],
   "auto_upload": true,
+  "supabase_url": "https://ozxzrhjhniuaqmrkovnh.supabase.co",
+  "supabase_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96eHpyaGpobml1YXFtcmtvdm5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MzM4NjQsImV4cCI6MjA5MDQwOTg2NH0.roWwlIW8FpbPUllkVzMckgzXIWWU17xpqcUJwKBkjRk",
   "processed_log": "D:\\mk\\agent\\processed_files.json"
 }

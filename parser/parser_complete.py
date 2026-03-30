@@ -400,20 +400,6 @@ class MKParserComplete:
                     logger.debug(f"Row {idx} parse error: {e}")
                     continue
 
-            return {"success": True, "daily_data": daily_data}
-
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-                                        amount = float(cleaned)
-                                        if amount > 0:
-                                            daily_data['tax_amount'] = Decimal(cleaned)
-                                            break
-                                    except:
-                                        pass
-                    
-                except:
-                    continue
-
             # Calculate net_sales if we have gross and tax
             if 'gross_sales' in daily_data and 'tax_amount' in daily_data:
                 daily_data['net_sales'] = daily_data['gross_sales'] + daily_data['tax_amount']

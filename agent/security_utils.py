@@ -8,13 +8,10 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pathlib import Path
 
 def get_machine_id():
-    """Generates a unique ID for the current machine to use as an encryption salt."""
-    try:
-        # Use the MAC address as a unique machine identifier
-        node = uuid.getnode()
-        return str(node).encode()
-    except Exception:
-        return b"MK_RESTAURANTS_LAOS_SALT"
+    """Returns a fixed salt for encryption (works on all machines)."""
+    # Fixed salt - same for all branch computers
+    # This allows credentials.enc to work on any machine
+    return b"MK_RESTAURANTS_LAOS_SALT_2026"
 
 def get_cipher():
     """Derives a encryption key from the machine ID."""

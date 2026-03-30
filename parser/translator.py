@@ -56,12 +56,12 @@ class ProductTranslator:
     def add_translation(self, thai_name: str, lao_name: str, en_name: str):
         """Add a new translation to the mapping"""
         self.mapping[thai_name] = {'lao': lao_name, 'en': en_name}
-    
+
     def save(self, filepath: str = None):
         """Save current mapping to JSON file"""
         if filepath is None:
             filepath = Path(__file__).parent.parent / "data" / "product_translations.json"
-        
+
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(self.mapping, f, ensure_ascii=False, indent=2)
 

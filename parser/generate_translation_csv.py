@@ -15,16 +15,15 @@ def generate_csv():
 
     with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)
-        # Header
-        writer.writerow(['Thai Name', 'English Name', 'Current Lao Name', 'New Lao Name (Fill here)', 'Category'])
-        
+        # Header - removed Category column
+        writer.writerow(['Thai Name', 'English Name', 'Current Lao Name', 'New Lao Name (Fill here)'])
+
         for thai_name, details in sorted(translations.items()):
             lao = details.get('lao', '')
             en = details.get('en', '')
-            cat = details.get('category', 'unknown')
-            
+
             # Write row, leaving "New Lao Name" empty for user to fill
-            writer.writerow([thai_name, en, lao, '', cat])
+            writer.writerow([thai_name, en, lao, ''])
 
     print(f"Successfully generated {csv_path}")
 

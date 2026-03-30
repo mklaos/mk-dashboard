@@ -33,12 +33,13 @@ def setup_credentials_from_env():
     # Load credentials from .env
     print(f"Reading credentials from: {backend_env}")
     load_dotenv(backend_env)
-    
+
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
-    
+    # Prefer service role key for backend operations (bypasses RLS)
+    supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
     if not supabase_url or not supabase_key:
-        print("ERROR: Could not find SUPABASE_URL or SUPABASE_KEY in .env file")
+        print("ERROR: Could not find SUPABASE_URL or SUPABASE_KEY/SUPABASE_ANON_KEY in .env file")
         return False
     
     print(f"✓ Found SUPABASE_URL: {supabase_url[:20]}...")

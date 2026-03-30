@@ -29,23 +29,12 @@ class MKUploader:
     def get_branch_id(self, branch_code: str, brand_name: str = None) -> str:
         if not self.client: return None
         try:
-            query = self.client.table("branches").select("id, brand_id").eq("code", branch_code)
-            response = query.execute()
-            
+            # Simple query - just get branch ID by code
+            # Note: brand_id column doesn't exist in current schema
+            response = self.client.table("branches").select("id").eq("code", branch_code).execute()
+
             if response.data:
-                branch_data = response.data[0]
-                branch_uuid = branch_data["id"]
-                
-                # If brand_name is provided, verify it matches
-                if brand_name:
-                    brand_res = self.client.table("brands").select("id").eq("name", brand_name).maybe_single().execute()
-                    if brand_res.data:
-                        expected_brand_id = brand_res.data["id"]
-                        if branch_data.get("brand_id") != expected_brand_id:
-                            logger.error(f"Branch {branch_code} does not belong to brand {brand_name}")
-                            return None
-                
-                return branch_uuid
+                return response.data[0]["id"]
             return None
         except Exception as e:
             logger.error(f"Error getting branch ID: {e}")

@@ -80,6 +80,7 @@ class Config:
             "auto_upload": True,
             "processed_log": str(self.base_dir / "processed_files.json")
         }
+        # Load encrypted credentials from credentials.enc
         self.supabase_url, self.supabase_key = load_secure_credentials()
         self.load()
 
@@ -88,11 +89,12 @@ class Config:
             try:
                 with open(self.path, 'r', encoding='utf-8') as f:
                     existing = json.load(f)
+                    # Update config without credentials
                     clean_existing = {k: v for k, v in existing.items() if k not in ['supabase_url', 'supabase_key']}
                     self.data.update(clean_existing)
             except Exception as e:
                 logger.error(f"Error loading config: {e}")
-        
+
         # Log credential status (not the actual values for security)
         if self.supabase_url and self.supabase_key:
             logger.info(f"Supabase credentials loaded: {self.supabase_url[:20]}...")
@@ -111,7 +113,8 @@ class Config:
 class FileHandler(FileSystemEventHandler):
     def __init__(self, agent): self.agent = agent
     def on_created(self, event):
-        if not event.is_directory and event.src_path.lower().endswith(('.xls', '.xlsx')):
+        # Support both Excel (.xls, .xlsx) and PDF (.pdf) files
+        if not event.is_directory and event.src_path.lower().endswith(('.xls', '.xlsx', '.pdf')):
             logger.info(f"Detected new file: {Path(event.src_path).name}")
             threading.Timer(2.0, self.agent.process_file, args=[event.src_path]).start()
 
@@ -126,6 +129,7 @@ class MKAgent:
         self.icon = None
         self.status_msg = "Initializing..."
         self.processed_files = self._load_processed_log()
+        self.next_sync_time = None  # Track next sync time for debug view
         
         # Ensure folders
         Path(self.config.data['watch_folder']).mkdir(parents=True, exist_ok=True)
@@ -195,46 +199,64 @@ class MKAgent:
                 now = datetime.now()
                 t_str = now.strftime("%H:%M")
                 d_str = now.strftime("%Y%m%d")
-                
+
                 # Calculate next sync for status
                 sync_times = sorted(self.config.data['sync_times'])
                 next_sync = "No times set"
+                next_sync_dt = None
+                
                 if sync_times:
                     found = False
                     for st in sync_times:
                         if st > t_str:
                             next_sync = st
+                            # Create datetime for next sync today
+                            next_sync_dt = datetime.strptime(f"{d_str} {st}", "%Y%m%d %H:%M")
                             found = True
                             break
-                    if not found: next_sync = sync_times[0] # Tomorrow
+                    if not found:
+                        # Next sync is tomorrow
+                        next_sync = sync_times[0]
+                        from datetime import timedelta
+                        tomorrow = (now + timedelta(days=1)).strftime("%Y%m%d")
+                        next_sync_dt = datetime.strptime(f"{tomorrow} {next_sync}", "%Y%m%d %H:%M")
                 
+                self.next_sync_time = next_sync_dt
                 self.status_msg = f"Status: Idle (Next sync: {next_sync})"
-                
+
                 if t_str in self.config.data['sync_times'] and last_trigger != (d_str + t_str):
                     logger.info(f"Scheduled sync triggered for {t_str}")
                     self.status_msg = f"Status: Syncing scheduled data ({t_str})..."
                     self.manual_sync()
                     last_trigger = d_str + t_str
+                    # After sync completes, update status
+                    self.status_msg = f"Status: Idle - Last sync completed at {now.strftime('%H:%M:%S')} (Next sync: {next_sync})"
             else:
                 self.status_msg = "Status: PAUSED"
             time.sleep(20)
 
     def manual_sync(self):
         logger.info("Starting sync of all files in watch folder...")
+        start_time = datetime.now()
         found_any = False
         watch_path = Path(self.config.data['watch_folder'])
         if not watch_path.exists():
             logger.error(f"Watch folder does not exist: {watch_path}")
             return
-            
+
         # Materialize list to avoid issues when moving files during iteration
         files = list(watch_path.glob("*.xls*"))
         for f in files:
             found_any = True
             self.process_file(str(f))
-            
+
         if not found_any:
             logger.info("No files found in watch folder.")
+        
+        # Update status after completion
+        elapsed = (datetime.now() - start_time).total_seconds()
+        self.status_msg = f"Status: Idle - Sync completed in {elapsed:.1f}s"
+        logger.info(f"Sync completed in {elapsed:.1f} seconds")
 
     def run_tray(self):
         image = Image.new('RGB', (64, 64), (229, 57, 53))
@@ -291,36 +313,97 @@ class MKAgent:
     def show_debug(self):
         win = tk.Tk()
         win.title("MK Agent - Debug View")
-        win.geometry("600x400")
+        win.geometry("700x500")
+
+        # Status Label with detailed info
+        status_frame = tk.Frame(win, bg="white", relief="raised", borderwidth=1)
+        status_frame.pack(fill="x", padx=10, pady=5)
         
-        # Status Label
-        status_lbl = tk.Label(win, text=self.status_msg, font=("Arial", 10, "bold"), fg="blue", anchor="w", padx=10)
-        status_lbl.pack(fill="x", pady=5)
+        status_lbl = tk.Label(status_frame, text=self.status_msg, font=("Arial", 10, "bold"), fg="blue", bg="white", anchor="w", padx=10, pady=5)
+        status_lbl.pack(fill="x")
         
+        # Next sync info label
+        next_sync_lbl = tk.Label(status_frame, text="", font=("Arial", 9), fg="gray", bg="white", anchor="w", padx=10)
+        next_sync_lbl.pack(fill="x", pady=(0, 5))
+
         txt = scrolledtext.ScrolledText(win, font=("Consolas", 9), bg="#f5f5f5")
-        txt.pack(expand=1, fill='both', padx=5, pady=5)
-        
+        txt.pack(expand=1, fill='both', padx=10, pady=5)
+
+        def save_logs():
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"mk_agent_log_{timestamp}.txt"
+            
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".txt",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+                initialfile=default_filename,
+                title="Save Log File"
+            )
+            
+            if file_path:
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write("\n".join(log_history))
+                    logger.info(f"Log saved to: {file_path}")
+                    messagebox.showinfo("Success", f"Log saved to:\n{file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to save log: {e}")
+                    messagebox.showerror("Error", f"Failed to save log:\n{str(e)}")
+
+        def copy_logs():
+            try:
+                win.clipboard_clear()
+                win.clipboard_append("\n".join(log_history))
+                logger.info("Log copied to clipboard.")
+                messagebox.showinfo("Success", "Log copied to clipboard!")
+            except Exception as e:
+                logger.error(f"Failed to copy log: {e}")
+                messagebox.showerror("Error", f"Failed to copy log:\n{str(e)}")
+
         def clear_logs():
-            log_history.clear()
-            txt.config(state='normal')
-            txt.delete('1.0', tk.END)
-            txt.config(state='disabled')
-            logger.info("Log view cleared.")
+            if messagebox.askyesno("Confirm", "Clear all logs from view?"):
+                log_history.clear()
+                txt.config(state='normal')
+                txt.delete('1.0', tk.END)
+                txt.config(state='disabled')
+                logger.info("Log view cleared.")
 
         btn_frame = tk.Frame(win)
-        btn_frame.pack(fill="x", side="bottom", pady=5)
-        tk.Button(btn_frame, text="Clear Log View", command=clear_logs, bg="#f44336", fg="white").pack(side="right", padx=10)
+        btn_frame.pack(fill="x", side="bottom", pady=10, padx=10)
         
+        tk.Button(btn_frame, text="💾 Save Log", command=save_logs, bg="#4CAF50", fg="white", font=("Arial", 9, "bold")).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="📋 Copy Log", command=copy_logs, bg="#2196F3", fg="white", font=("Arial", 9, "bold")).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="🗑️ Clear Log", command=clear_logs, bg="#f44336", fg="white", font=("Arial", 9, "bold")).pack(side="right", padx=5)
+
         def refresh():
             if not win.winfo_exists(): return
+            
+            # Update status with next sync info
             status_lbl.config(text=self.status_msg)
+            
+            # Calculate and show next sync time
+            if hasattr(self, 'next_sync_time') and self.next_sync_time:
+                from datetime import datetime
+                now = datetime.now()
+                time_diff = self.next_sync_time - now
+                if time_diff.total_seconds() > 0:
+                    hours, remainder = divmod(int(time_diff.total_seconds()), 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    next_sync_lbl.config(text=f"Next sync in: {hours:02d}:{minutes:02d}:{seconds:02d} | {self.next_sync_time.strftime('%H:%M:%S')}")
+                else:
+                    next_sync_lbl.config(text="Next sync: Calculating...")
+            else:
+                next_sync_lbl.config(text="Status: Running")
+            
+            # Update log view
             txt.config(state='normal')
             txt.delete('1.0', tk.END)
             txt.insert(tk.END, "\n".join(log_history))
             txt.see(tk.END)
             txt.config(state='disabled')
             win.after(2000, refresh)
-            
+
         refresh()
         win.mainloop()
 

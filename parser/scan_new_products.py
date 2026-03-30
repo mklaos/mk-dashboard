@@ -55,8 +55,8 @@ def scan_reports_for_new_products():
         for p in sorted(new_products):
             print(f" - {p}")
             # Add to translations with empty Lao/En so they appear in CSV next time
-            translations[p] = {"lao": "", "en": p, "category": "unknown"}
-        
+            translations[p] = {"lao": "", "en": p}
+
         # Save updated JSON
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(translations, f, ensure_ascii=False, indent=2)

@@ -28,24 +28,21 @@ def import_translations_from_csv():
                 thai_name = row['Thai Name']
                 new_lao = row.get('New Lao Name (Fill here)', '').strip()
                 english = row.get('English Name', '').strip()
-                category = row.get('Category', 'unknown').strip()
-                
+
                 if thai_name:
                     # Update if new Lao name is provided
                     if new_lao:
                         if thai_name not in translations:
                             translations[thai_name] = {}
-                        
+
                         translations[thai_name]['lao'] = new_lao
                         translations[thai_name]['en'] = english if english else thai_name
-                        translations[thai_name]['category'] = category
                         updated_count += 1
                     elif thai_name not in translations:
                         # Add as placeholder if not exists
                         translations[thai_name] = {
                             'lao': row.get('Current Lao Name', '').strip(),
-                            'en': english if english else thai_name,
-                            'category': category
+                            'en': english if english else thai_name
                         }
 
         # Save updated JSON
