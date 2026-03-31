@@ -12,23 +12,30 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    debugPrint('Loading .env...');
-    await dotenv.load(fileName: '.env');
-    debugPrint('Successfully loaded .env');
+    // For web deployment, use compile-time environment variables
+    // For local development, fall back to .env file
+    String? supabaseUrl = const String.fromEnvironment('SUPABASE_URL');
+    String? supabaseKey = const String.fromEnvironment('SUPABASE_KEY');
 
-    final supabaseUrl = dotenv.env['SUPABASE_URL'];
-    final supabaseKey = dotenv.env['SUPABASE_KEY'];
-
-    if (supabaseUrl == null || supabaseKey == null) {
-      throw Exception('Missing SUPABASE_URL or SUPABASE_KEY in .env');
+    // Fallback to .env for local development
+    if (supabaseUrl == null || supabaseUrl.isEmpty || 
+        supabaseKey == null || supabaseKey.isEmpty) {
+      debugPrint('Loading .env for local development...');
+      await dotenv.load(fileName: '.env');
+      supabaseUrl = dotenv.env['SUPABASE_URL'];
+      supabaseKey = dotenv.env['SUPABASE_KEY'];
     }
 
-    debugPrint('Initializing Supabase...');
+    if (supabaseUrl == null || supabaseKey == null) {
+      throw Exception('Missing SUPABASE_URL or SUPABASE_KEY');
+    }
+
+    debugPrint('Initializing Supabase with URL: ${supabaseUrl.substring(0, 25)}...');
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseKey,
     );
-    debugPrint('Supabase initialized');
+    debugPrint('Supabase initialized successfully');
 
     runApp(const MKDashboardApp());
   } catch (e, stackTrace) {
