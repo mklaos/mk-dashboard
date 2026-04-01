@@ -601,21 +601,39 @@ class MKParserComplete:
     # ============================================================================
     # MAIN ENTRY POINT
     # ============================================================================
-    
+
     def parse_file(self, file_path: str) -> Dict:
-        """Main entry point - parse any MK report file"""
+        """Main entry point - parse any MK report file (XLS or PDF)"""
         file_path = Path(file_path)
         filename = file_path.name
-        
+
         if not file_path.exists():
             return {"success": False, "error": "File not found", "filename": filename}
+
+        # Check if PDF or Excel
+        is_pdf = file_path.suffix.lower() == '.pdf'
         
+        if is_pdf:
+            # Use PDF parser
+            try:
+                from .pdf_parser import MKPDFParser
+                pdf_parser = MKPDFParser(self.branch_code)
+                result = pdf_parser.parse_file(str(file_path))
+                result["filename"] = filename
+                result["branch_code"] = self.branch_code
+                return result
+            except ImportError as e:
+                return {"success": False, "error": f"PDF parser not available: {e}"}
+            except Exception as e:
+                return {"success": False, "error": f"PDF parsing error: {e}", "filename": filename}
+
+        # Excel parsing
         report_type = self.detect_report_type(filename)
         sale_date = self.extract_date(filename) or date.today()
-        
+
         try:
             df = pd.read_excel(file_path, header=None)
-            
+
             # Route to appropriate parser
             if report_type in ['suki_items', 'suki_sets', 'duck_items', 'dim_sum', 'beverages', 'desserts']:
                 result = self.parse_product_file(df, sale_date, report_type)
@@ -638,15 +656,15 @@ class MKParserComplete:
             else:
                 # Generic for other types (vip, credit, kitchen_categories)
                 result = {"success": True, "message": f"File read: {len(df)} rows", "type": report_type}
-            
+
             result["filename"] = filename
             result["report_type"] = report_type
             result["sale_date"] = sale_date.isoformat()
             result["branch_code"] = self.branch_code
             result["raw_rows"] = len(df)
-            
+
             return result
-            
+
         except Exception as e:
             return {
                 "success": False,
