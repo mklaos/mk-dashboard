@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import '../models/branch.dart';
 
 class BranchSelector extends StatelessWidget {
-  final List<String> branchCodes;
-  final String selectedBranch;
+  final List<Branch> branches;
+  final String selectedBranchCode;
   final Function(String) onBranchSelected;
 
   const BranchSelector({
     super.key,
-    required this.branchCodes,
-    required this.selectedBranch,
+    required this.branches,
+    required this.selectedBranchCode,
     required this.onBranchSelected,
   });
 
@@ -29,48 +30,78 @@ class BranchSelector extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: branchCodes.map((code) {
-                final isSelected = code == selectedBranch;
-                final isAll = code == 'ALL';
-
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(
-                      isAll ? 'All Branches' : code,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) {
-                        onBranchSelected(code);
-                      }
-                    },
-                    backgroundColor: Colors.grey[200],
-                    selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                    checkmarkColor: Theme.of(context).colorScheme.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                );
-              }).toList(),
+              children: [
+                _buildBranchChip(context, 'ALL', 'All Branches', 'ທຸກສາຂາ', null),
+                ...branches.map((branch) => _buildBranchChip(
+                  context,
+                  branch.code,
+                  branch.nameEn ?? branch.name,
+                  branch.nameLao,
+                  null,
+                )),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBranchChip(
+    BuildContext context,
+    String code,
+    String nameEn,
+    String? nameLao,
+    Color? chipColor,
+  ) {
+    final isSelected = code == selectedBranchCode;
+    final displayName = nameLao != null && nameLao.isNotEmpty ? nameLao : nameEn;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: FilterChip(
+        label: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              nameEn,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (nameLao != null && nameLao.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                nameLao,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isSelected ? Colors.white70 : Colors.grey[600],
+                ),
+              ),
+            ],
+          ],
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) onBranchSelected(code);
+        },
+        selectedColor: chipColor ?? Theme.of(context).colorScheme.primaryContainer,
+        backgroundColor: Colors.grey[200],
+        checkmarkColor: Theme.of(context).colorScheme.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
     );
   }
