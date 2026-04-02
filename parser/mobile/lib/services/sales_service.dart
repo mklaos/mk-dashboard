@@ -401,6 +401,12 @@ class SalesService {
         {'category': 'Food', 'category_lao': 'ອາຫານ', 'amount': foodSales, 'percentage': total > 0 ? (foodSales / total * 100) : 0},
         {'category': 'Beverage', 'category_lao': 'ເຄື່ອງດື່ມ', 'amount': beverageSales, 'percentage': total > 0 ? (beverageSales / total * 100) : 0},
       ];
+    } catch (e) {
+      print('Error in getSalesMixByCategory: $e');
+      return [];
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getDailyTrends(
     String startDate,
     String endDate, {

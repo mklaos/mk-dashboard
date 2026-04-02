@@ -117,8 +117,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onBrandSelected: provider.switchBrand,
             ),
             BranchSelector(
-              branchCodes: ['ALL', ...provider.filteredBranches.map((b) => b.code)],
-              selectedBranch: provider.selectedBranchCode,
+              branches: provider.branches,
+              selectedBranchCode: provider.selectedBranchCode,
               onBranchSelected: provider.switchBranch,
             ),
             const SizedBox(height: 4),
@@ -293,9 +293,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final customersGrowth = provider.getGrowthFor('customer_count');
     final avgTicketGrowth = provider.getGrowthFor('net_sales');
 
-    final netSalesExTax = data?['net_sales_ex_tax'] ?? 0;
-    final voidAmount = (data?['void_amount'] is num ? data?['void_amount'] : 0).toDouble();
-    final netSales = (data?['net_sales'] is num ? data?['net_sales'] : 1).toDouble();
+    final netSalesExTax = (data?['net_sales_ex_tax'] is num) ? data!['net_sales_ex_tax'] : 0;
+    final voidAmount = (data?['void_amount'] is num) ? data!['void_amount'] : 0;
+    final netSales = (data?['net_sales'] is num) ? data!['net_sales'] : 1;
     final voidPercentage = (voidAmount / (netSales > 0 ? netSales : 1)) * 100;
 
     Color voidColor = Colors.green;

@@ -65,9 +65,17 @@ class _TrendsScreenState extends State<TrendsScreen> {
               provider.loadTrends();
             },
           ),
+          BrandSelector(
+            brands: provider.brands,
+            selectedBrandId: provider.selectedBrandId,
+            onBrandSelected: (id) {
+              provider.switchBrand(id);
+              provider.loadTrends();
+            },
+          ),
           BranchSelector(
-            branchCodes: ['ALL', ...provider.filteredBranches.map((b) => b.code)],
-            selectedBranch: provider.selectedBranchCode,
+            branches: provider.branches,
+            selectedBranchCode: provider.selectedBranchCode,
             onBranchSelected: (code) {
               provider.switchBranch(code);
               provider.loadTrends();
